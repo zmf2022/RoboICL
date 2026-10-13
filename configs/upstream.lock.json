@@ -1,30 +1,57 @@
 {
-  "schema": "roboicl.upstream.v2",
+  "schema": "roboicl.upstream.v3",
   "packages": [
     {
       "name": "RoboDojo",
       "path": "third_party/RoboDojo",
       "url": "https://github.com/Mosi-AI/RoboDojo.git",
-      "commit": "00ef04cd245bfa76e6f1e0bd8383c82f7964f942"
+      "commit": "00ef04cd245bfa76e6f1e0bd8383c82f7964f942",
+      "required_files": [
+        "LICENSE",
+        "env/global_configs.py",
+        "src/eval_client/eval_env.py"
+      ]
     },
     {
       "name": "XPolicyLab",
       "path": "third_party/XPolicyLab",
       "url": "https://github.com/XPolicyLab/XPolicyLab.git",
-      "commit": "fa431ecd893ee706883e64fe5fe1464ec8cd928d"
+      "commit": "fa431ecd893ee706883e64fe5fe1464ec8cd928d",
+      "required_files": [
+        "LICENSE",
+        "utils/process_data.py",
+        "client_server/ws/model_client.py"
+      ]
     },
     {
       "name": "IsaacLab",
       "path": "third_party/IsaacLab",
       "url": "https://github.com/isaac-sim/IsaacLab.git",
-      "commit": "afca7b09d60d8beb9c1cb28b43066499940b969b"
+      "commit": "ffff603eafc6b74264a5261cc0183d6a65390d78",
+      "tag": "v3.0.0-beta2.patch1",
+      "note": "Isaac Lab 3.0 sources for Isaac Sim 6.0.1.0 / Python 3.12. Legacy RoboDojo API adaptation is in roboicl.isaaclab_compat.",
+      "required_files": [
+        "LICENSE",
+        "source/isaaclab/isaaclab/app/app_launcher.py",
+        "source/isaaclab_physx/isaaclab_physx/physics/physx_manager.py"
+      ]
     },
     {
       "name": "cuRobo",
       "path": "third_party/curobo",
       "url": "https://github.com/NVlabs/curobo.git",
-      "commit": "895c6517243f8cb091c73c018c8167192d39599a"
+      "commit": "895c6517243f8cb091c73c018c8167192d39599a",
+      "required_files": [
+        "LICENSE",
+        "curobo/__init__.py",
+        "pyproject.toml"
+      ]
     }
   ],
-  "integration": "Submodules are loaded in place; RoboICL pins the RoboDojo integration commit containing the execution-side IK guard, camera validation, and external asset path adapters."
+  "integration": "Dependency sources are ordinary files tracked by the main repository. Commits retain upstream provenance; local edits are allowed. Nested RoboDojo dependency copies are omitted; all processes use the four shared source directories.",
+  "storage": "vendored",
+  "simulator": {
+    "python": "3.12",
+    "isaacsim": "6.0.1.0"
+  }
 }

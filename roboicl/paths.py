@@ -1,4 +1,4 @@
-"""Repository, data, result, and pinned upstream import paths."""
+"""Repository, data, result, and bundled dependency import paths."""
 
 from __future__ import annotations
 
@@ -24,11 +24,11 @@ def results_root(value=None) -> Path:
 
 
 def python_paths(context: str = "policy") -> list[str]:
-    """Paths needed to import owned code and the four clean submodules.
+    """Paths needed to import owned code and the four bundled source directories.
 
     RoboDojo and XPolicyLab both expose a historical top-level ``utils``
     package. Put the process owner first so Python resolves that namespace
-    without copying or modifying either submodule.
+    while sharing the same dependency sources.
     """
     if context not in ("policy", "sim"):
         raise ValueError("context must be policy or sim")

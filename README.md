@@ -53,7 +53,7 @@ execution.
 
 - Linux with an NVIDIA GPU and a working Vulkan/CUDA stack
 - Git and Git LFS
-- an Isaac Sim 5.1-compatible simulator environment
+- an Isaac Sim 6.0.1 simulator environment (Python 3.12, Isaac Lab 3.0)
 - a separate Python environment for the multimodal policy process
 
 The simulator and policy processes intentionally use separate interpreters
@@ -62,18 +62,16 @@ because their `websockets` and simulator dependency constraints differ.
 ### Clone the repository
 
 ```bash
-git clone --recurse-submodules https://github.com/Mosi-AI/RoboICL.git
+git clone https://github.com/Mosi-AI/RoboICL.git
 cd RoboICL
 ```
 
-For an existing clone:
-
-```bash
-git submodule update --init --recursive
-```
-
-The exact supported commits of RoboDojo, XPolicyLab, IsaacLab, and cuRobo are
-recorded in `configs/upstream.lock.json` and verified before launch.
+Dependency sources are tracked directly by this repository under `third_party/`.
+There are no Git submodules or nested dependency checkouts. Upstream revisions
+and the required simulator version are recorded in `configs/upstream.lock.json`;
+source entry points and interpreter metadata are checked before launch.
+Third-party licenses remain alongside their sources. See
+[`third_party/README.md`](third_party/README.md) for the import layout and vendoring changes.
 
 ### Configure the two Python environments
 
@@ -88,14 +86,31 @@ export ROBOICL_RESULTS_ROOT="$PWD/results"
 source setup/paths.sh
 ```
 
-Install the direct RoboICL dependencies into those environments after the
-Isaac Sim environment itself is available:
+Use Python 3.12 for the simulator. Isaac Sim 6.0.1 uses the wheel version
+`6.0.1.0`; install it in the dedicated simulator environment:
+
+```bash
+"$ROBOICL_SIM_PYTHON" -m pip install 'isaacsim[all,extscache]==6.0.1.0' \
+  --extra-index-url https://pypi.nvidia.com
+```
+
+Install the direct RoboICL dependencies next:
 
 ```bash
 "$ROBOICL_POLICY_PYTHON" -m pip install -r setup/requirements-policy.txt
 "$ROBOICL_SIM_PYTHON" -m pip install \
   -r setup/requirements-sim.txt \
   -c setup/constraints-sim.txt
+```
+
+Install the bundled simulator libraries from the repository root:
+
+```bash
+"$ROBOICL_SIM_PYTHON" -m pip install -e third_party/IsaacLab/source/isaaclab \
+  -e third_party/IsaacLab/source/isaaclab_physx \
+  -e third_party/IsaacLab/source/isaaclab_assets \
+  -e third_party/IsaacLab/source/isaaclab_tasks
+"$ROBOICL_SIM_PYTHON" -m pip install -e third_party/curobo --no-build-isolation
 ```
 
 If the simulator environment provides a newer `libstdc++` than the host:
@@ -184,8 +199,9 @@ Both use the task-adaptive action horizons in
   --dry-run
 ```
 
-This validates the task, layout, assets, profile, interpreters, and pinned
-submodules without starting the simulator or calling the model API.
+This validates the task, layout, assets, profile, interpreters, and bundled
+sources plus Isaac Sim 6.0.1.0 / Python 3.12, without starting the simulator
+or calling the model API.
 
 ### 2. Validate the simulator and cameras
 
@@ -251,7 +267,7 @@ configs/
 ├── adaptive_horizons.json task-specific action horizons
 ├── data.lock.json         frozen asset revision
 ├── references/             setting-level source episodes and exact TRAIN windows
-└── upstream.lock.json     pinned submodule commits
+└── upstream.lock.json     bundled source provenance and simulator version
 setup/
 ├── fetch_assets.py
 ├── fetch_reference.py
@@ -285,5 +301,5 @@ third_party/
 ## License
 
 RoboICL's project-owned code is released under the [MIT License](LICENSE).
-Third-party submodules and benchmark assets retain their original licenses and
+Third-party sources and benchmark assets retain their original licenses and
 terms.

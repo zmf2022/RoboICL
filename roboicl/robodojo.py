@@ -1,4 +1,4 @@
-"""Thin adapter that runs one exact layout against the clean RoboDojo submodule."""
+"""Thin adapter that runs one exact layout against the bundled RoboDojo sources."""
 
 from __future__ import annotations
 
@@ -15,6 +15,14 @@ from roboicl.paths import ROBODOJO, configure_imports
 configure_imports("sim")
 
 from isaaclab.app import AppLauncher
+
+from roboicl.isaaclab_compat import deprecated_extension_args
+from roboicl.isaaclab_compat import install as install_isaaclab_compat
+from roboicl.isaaclab_compat import install_post_launch as install_robodojo_runtime_compat
+
+# RoboDojo still constructs SimulationCfg(physx=PhysxCfg()); restore that pair
+# before any RoboDojo module reads it at import time.
+install_isaaclab_compat()
 
 
 def parser() -> argparse.ArgumentParser:
@@ -63,14 +71,18 @@ def main() -> int:
     os.environ["ROBOICL_RESULTS_ROOT"] = str(results_root)
     os.chdir(results_root)
 
-    # Configure the clean submodule before any RoboDojo module copies these globals.
+    # Configure the bundled sources before any RoboDojo module copies these globals.
     global_configs = importlib.import_module("env.global_configs")
     global_configs.ASSETS_PATH = str(assets)
     global_configs.OBJECTS_PATH = str(assets / "Object/RoboDojo")
     global_configs.ROBOTS_PATH = str(assets / "Robots")
 
+    args.kit_args = " ".join(filter(None, (args.kit_args, deprecated_extension_args())))
     app_launcher = AppLauncher(args)
     simulation_app = app_launcher.app
+    # Isaac Sim 6 dropped re-exports that only matter once its extensions are
+    # loaded; restore them before any RoboDojo runtime module imports them.
+    install_robodojo_runtime_compat()
     env = None
     stage = "import RoboDojo runtime"
     try:
