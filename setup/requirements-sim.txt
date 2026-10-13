@@ -16,3 +16,6 @@ setuptools-scm==8.2.0
 toml==0.10.2
 wheel==0.45.1
 virtualenv==20.30.0
+
+# RoboDojo uses the newer cuRobo API; v0.7.8 is incompatible.
+nvidia-curobo @ git+https://github.com/NVlabs/curobo.git@895c6517243f8cb091c73c018c8167192d39599a

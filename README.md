@@ -66,10 +66,13 @@ git clone https://github.com/Mosi-AI/RoboICL.git
 cd RoboICL
 ```
 
-Dependency sources are tracked directly by this repository under `third_party/`.
+RoboDojo, XPolicyLab, and IsaacLab sources are tracked directly under `third_party/`.
+cuRobo is installed in the simulator environment from the upstream commit pinned
+in `configs/upstream.lock.json` and `setup/requirements-sim.txt`.
 There are no Git submodules or nested dependency checkouts. Upstream revisions
 and the required simulator version are recorded in `configs/upstream.lock.json`;
-source entry points and interpreter metadata are checked before launch.
+source entry points, interpreter metadata, and the installed cuRobo commit are
+checked before launch.
 Third-party licenses remain alongside their sources. See
 [`third_party/README.md`](third_party/README.md) for the import layout and vendoring changes.
 
@@ -110,7 +113,6 @@ Install the bundled simulator libraries from the repository root:
   -e third_party/IsaacLab/source/isaaclab_physx \
   -e third_party/IsaacLab/source/isaaclab_assets \
   -e third_party/IsaacLab/source/isaaclab_tasks
-"$ROBOICL_SIM_PYTHON" -m pip install -e third_party/curobo --no-build-isolation
 ```
 
 If the simulator environment provides a newer `libstdc++` than the host:
@@ -200,8 +202,8 @@ Both use the task-adaptive action horizons in
 ```
 
 This validates the task, layout, assets, profile, interpreters, and bundled
-sources plus Isaac Sim 6.0.1.0 / Python 3.12, without starting the simulator
-or calling the model API.
+sources, installed cuRobo provenance, and Isaac Sim 6.0.1.0 / Python 3.12,
+without starting the simulator or calling the model API.
 
 ### 2. Validate the simulator and cameras
 
@@ -277,8 +279,7 @@ setup/
 third_party/
 ├── RoboDojo/
 ├── XPolicyLab/
-├── IsaacLab/
-└── curobo/
+└── IsaacLab/
 ```
 
 <p align="center">

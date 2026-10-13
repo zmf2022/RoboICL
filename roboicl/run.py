@@ -37,7 +37,7 @@ from roboicl.policy.image_budget import (
 from roboicl.policy.provider_compat import validate_api_mode, validate_endpoint
 from roboicl.paths import data_root as get_data_root, results_root as get_results_root, python_paths
 from roboicl.reference_setting import load_reference_setting, reference_record
-from roboicl.upstream import verify_sources, verify_simulator
+from roboicl.upstream import verify_sources, verify_simulator, verify_curobo
 
 
 def absolute_path(value):
@@ -562,6 +562,7 @@ def main():
     }
     record["upstream"] = verify_sources()
     record["simulator"] = verify_simulator(sim_python)
+    record["curobo"] = verify_curobo(sim_python)
     if args.dry_run:
         print(json.dumps(record, ensure_ascii=False, indent=2))
         return 0

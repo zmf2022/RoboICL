@@ -12,7 +12,6 @@ THIRD_PARTY = CODE / "third_party"
 ROBODOJO = THIRD_PARTY / "RoboDojo"
 XPOLICYLAB = THIRD_PARTY / "XPolicyLab"
 ISAACLAB = THIRD_PARTY / "IsaacLab"
-CUROBO = THIRD_PARTY / "curobo"
 
 
 def data_root(value=None) -> Path:
@@ -24,7 +23,7 @@ def results_root(value=None) -> Path:
 
 
 def python_paths(context: str = "policy") -> list[str]:
-    """Paths needed to import owned code and the four bundled source directories.
+    """Paths needed to import owned code and the three bundled source directories.
 
     RoboDojo and XPolicyLab both expose a historical top-level ``utils``
     package. Put the process owner first so Python resolves that namespace
@@ -33,7 +32,7 @@ def python_paths(context: str = "policy") -> list[str]:
     if context not in ("policy", "sim"):
         raise ValueError("context must be policy or sim")
     owners = [XPOLICYLAB, ROBODOJO] if context == "policy" else [ROBODOJO, XPOLICYLAB]
-    paths = [CODE, THIRD_PARTY, *owners, CUROBO]
+    paths = [CODE, THIRD_PARTY, *owners]
     paths.extend(path for path in sorted((ISAACLAB / "source").glob("*")) if path.is_dir())
     return [str(path) for path in paths]
 

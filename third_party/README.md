@@ -11,10 +11,14 @@ The simulator target is Python 3.12 with Isaac Sim wheel version 6.0.1.0.
 - `RoboDojo`: benchmark environments, task definitions, and evaluation client.
 - `XPolicyLab`: shared policy transport and data helpers.
 - `IsaacLab`: shared simulator framework and PhysX backend.
-- `curobo`: shared kinematics and motion planning library.
+
+cuRobo is an external simulator dependency installed from the commit in
+`setup/requirements-sim.txt`. Its source is not included in this repository.
+The launcher validates its installed VCS provenance and the API files required
+by RoboDojo; the older cuRobo 0.7.8 API is incompatible.
 
 RoboDojo's nested XPolicyLab, IsaacLab, and cuRobo checkouts are omitted. Import
-paths in `roboicl/paths.py` select the four shared directories. The imported
+paths in `roboicl/paths.py` select the three shared directories. The imported
 tracked files are retained, including upstream docs, tests, and licenses;
 generated files and upstream Git metadata are excluded.
 
@@ -25,9 +29,6 @@ Vendoring changes:
   materialized dependency assets are tracked as ordinary Git blobs, so cloning
   does not depend on uploading them to a separate LFS server. Benchmark assets
   under `data/` still use the separate asset fetch workflow.
-- cuRobo's package version is fixed to `0.8.0.post30` for the imported revision,
-  so package builds do not depend on an upstream Git checkout or the main
-  repository's tags.
 
 Legacy RoboDojo / Isaac Lab 3.0 API adaptation lives in
 `roboicl/isaaclab_compat.py`. Deprecated Isaac Sim extensions are registered with

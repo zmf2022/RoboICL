@@ -5,13 +5,13 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from roboicl.upstream import verify_simulator, verify_sources
+from roboicl.upstream import verify_curobo, verify_simulator, verify_sources
 
 
 class BundledSourceTest(unittest.TestCase):
     def test_current_sources_are_complete(self):
         report = verify_sources()
-        self.assertEqual(len(report['packages']), 4)
+        self.assertEqual(len(report['packages']), 3)
         self.assertTrue(all(p['storage'] == 'vendored' for p in report['packages']))
 
     def test_missing_entry_point_is_rejected(self):
@@ -54,6 +54,45 @@ class BundledSourceTest(unittest.TestCase):
         with patch('roboicl.upstream.subprocess.run', return_value=probe):
             with self.assertRaisesRegex(ValueError, 'expected 3.12'):
                 verify_simulator(Path('/sim/python'))
+
+
+    def test_old_curobo_install_is_rejected(self):
+        probe = subprocess.CompletedProcess([], 0, json.dumps({
+            'installed': True, 'version': '0.7.8',
+            'provenance': {'url': 'https://github.com/NVlabs/curobo.git',
+                           'vcs_info': {'vcs': 'git', 'commit_id': 'old'}},
+            'missing_files': ['batch_motion_planner.py'],
+        }), '')
+        with patch('roboicl.upstream.subprocess.run', return_value=probe):
+            with self.assertRaisesRegex(ValueError, 'newer API'):
+                verify_curobo(Path('/sim/python'))
+
+    def test_missing_curobo_install_is_rejected(self):
+        probe = subprocess.CompletedProcess([], 0, '{"installed": false}', '')
+        with patch('roboicl.upstream.subprocess.run', return_value=probe):
+            with self.assertRaisesRegex(ValueError, 'requirements-sim.txt'):
+                verify_curobo(Path('/sim/python'))
+
+    def test_pinned_curobo_without_required_api_is_rejected(self):
+        expected = json.loads(Path('configs/upstream.lock.json').read_text())['external_packages'][0]
+        actual = {'installed': True, 'version': '0.8.0',
+                  'provenance': {'url': expected['url'], 'vcs_info': {
+                      'vcs': 'git', 'commit_id': expected['commit']}},
+                  'missing_files': ['runtime.py']}
+        probe = subprocess.CompletedProcess([], 0, json.dumps(actual), '')
+        with patch('roboicl.upstream.subprocess.run', return_value=probe):
+            with self.assertRaisesRegex(ValueError, 'newer API'):
+                verify_curobo(Path('/sim/python'))
+
+    def test_pinned_curobo_install_is_accepted(self):
+        expected = json.loads(Path('configs/upstream.lock.json').read_text())['external_packages'][0]
+        actual = {'installed': True, 'version': '0.8.0',
+                  'provenance': {'url': expected['url'], 'vcs_info': {
+                      'vcs': 'git', 'commit_id': expected['commit']}},
+                  'missing_files': []}
+        probe = subprocess.CompletedProcess([], 0, json.dumps(actual), '')
+        with patch('roboicl.upstream.subprocess.run', return_value=probe):
+            self.assertEqual(verify_curobo(Path('/sim/python')), actual)
 
 
 if __name__ == '__main__':

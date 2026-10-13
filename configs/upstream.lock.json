@@ -1,5 +1,5 @@
 {
-  "schema": "roboicl.upstream.v3",
+  "schema": "roboicl.upstream.v4",
   "packages": [
     {
       "name": "RoboDojo",
@@ -35,23 +35,27 @@
         "source/isaaclab/isaaclab/app/app_launcher.py",
         "source/isaaclab_physx/isaaclab_physx/physics/physx_manager.py"
       ]
-    },
-    {
-      "name": "cuRobo",
-      "path": "third_party/curobo",
-      "url": "https://github.com/NVlabs/curobo.git",
-      "commit": "895c6517243f8cb091c73c018c8167192d39599a",
-      "required_files": [
-        "LICENSE",
-        "curobo/__init__.py",
-        "pyproject.toml"
-      ]
     }
   ],
-  "integration": "Dependency sources are ordinary files tracked by the main repository. Commits retain upstream provenance; local edits are allowed. Nested RoboDojo dependency copies are omitted; all processes use the four shared source directories.",
+  "integration": "RoboDojo, XPolicyLab, and IsaacLab sources are ordinary files tracked by the main repository. Their commits retain upstream provenance; local edits are allowed. cuRobo is installed in the simulator environment from the pinned upstream commit. Nested dependency copies are omitted.",
   "storage": "vendored",
   "simulator": {
     "python": "3.12",
     "isaacsim": "6.0.1.0"
-  }
+  },
+  "external_packages": [
+    {
+      "name": "cuRobo",
+      "distribution": "nvidia-curobo",
+      "module": "curobo",
+      "url": "https://github.com/NVlabs/curobo.git",
+      "commit": "895c6517243f8cb091c73c018c8167192d39599a",
+      "required_files": [
+        "batch_motion_planner.py",
+        "inverse_kinematics.py",
+        "motion_planner.py",
+        "runtime.py"
+      ]
+    }
+  ]
 }
