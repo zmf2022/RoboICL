@@ -44,6 +44,25 @@ def absolute_path(value):
     return Path(value).expanduser().absolute()
 
 
+def validate_camera_probe(output: Path, client_returncode: int) -> None:
+    """Require a clean simulator exit and complete camera observations."""
+    client_log = output / "client.log"
+    if client_returncode != 0:
+        raise RuntimeError(
+            f"Simulator exited with code {client_returncode}; camera validation failed. "
+            f"See {client_log}"
+        )
+    probe = output / "capture/capture_probe.json"
+    if not probe.is_file():
+        raise RuntimeError(f"Capture-only run did not produce camera probe; see {client_log}")
+    rows = json.loads(probe.read_text())
+    observed = [row for row in rows if row["route"] == "observation"]
+    if len(observed) != 30 or any(
+        row["max"] == 0 or row["shape"] != [480, 640, 3] for row in observed
+    ):
+        raise RuntimeError(f"Camera probe invalid; see {probe} and {client_log}")
+
+
 def python_path(value):
     """Accept an interpreter path or a command discoverable on PATH."""
     found = shutil.which(str(value))
@@ -681,19 +700,8 @@ def main():
         record["client_returncode"] = rc
         status = "client_exited" if rc == 0 else "failed"
         if args.capture_only:
-            probe = out / "capture/capture_probe.json"
-            if probe.exists():
-                rows = json.loads(probe.read_text())
-                observed = [r for r in rows if r["route"] == "observation"]
-                if len(observed) != 30 or any(
-                    r["max"] == 0 or r["shape"] != [480, 640, 3]
-                    for r in observed
-                ):
-                    raise RuntimeError("Camera probe invalid")
-                rc = 0
-                status = "capture_complete_no_api"
-            else:
-                raise RuntimeError("Capture-only run did not produce camera probe")
+            validate_camera_probe(out, rc)
+            status = "capture_complete_no_api"
         elif rc == 0:
             result_path = (
                 results_root

@@ -76,51 +76,62 @@ checked before launch.
 Third-party licenses remain alongside their sources. See
 [`third_party/README.md`](third_party/README.md) for the import layout and vendoring changes.
 
-### Configure the two Python environments
+### Install the environments once
 
-Point RoboICL at the interpreters that contain your simulator and policy
-dependencies:
+Run from the repository root. The two environments have distinct jobs:
+
+| Environment | Purpose |
+|---|---|
+| `roboicl-sim` | Isaac Sim 6.0.1, Isaac Lab, cuRobo, and robot simulation |
+| `roboicl-policy` | Model API requests and the policy server |
+
+Create fresh environments to keep other projects' dependencies and source paths
+out of this installation. Skip this installation section if they are already configured.
+
+**Install the simulator:**
 
 ```bash
-export ROBOICL_SIM_PYTHON=/path/to/sim/bin/python
-export ROBOICL_POLICY_PYTHON=/path/to/policy/bin/python
-export ROBOICL_DATA_ROOT="$PWD/data"
-export ROBOICL_RESULTS_ROOT="$PWD/results"
+conda env create -f setup/environment-sim.yml
+conda activate roboicl-sim
+python -m pip install \
+  torch==2.11.0 torchvision==0.26.0 torchaudio==2.11.0 \
+  --index-url https://download.pytorch.org/whl/cu128
+python -m pip install \
+  -r setup/requirements-sim.txt -c setup/constraints-sim.txt \
+  --extra-index-url https://pypi.nvidia.com
+python -m pip check
+```
+
+This installs Isaac Sim `6.0.1.0`, cuRobo at the pinned upstream commit, and the
+Isaac Lab packages and Kit visualizer from this repository. `pip check` should report
+`No broken requirements found.`
+
+**Install the policy process:**
+
+```bash
+conda env create -f setup/environment-policy.yml
+conda activate roboicl-policy
+python -m pip install -r setup/requirements-policy.txt
+python -m pip check
+```
+
+### Prepare each terminal before running
+
+From the repository root, only these two commands are needed:
+
+```bash
+conda activate roboicl-policy
 source setup/paths.sh
 ```
 
-Use Python 3.12 for the simulator. Isaac Sim 6.0.1 uses the wheel version
-`6.0.1.0`; install it in the dedicated simulator environment:
+`setup/paths.sh` selects both environments' Python interpreters and the project's
+`data/` and `results/` directories. It also disables user-site packages and sets
+up the simulator's environment library when available. The launcher starts the
+simulator with `roboicl-sim` automatically; keep `roboicl-policy` active for the
+commands below. Nothing needs to be saved with `conda env config vars set`.
 
-```bash
-"$ROBOICL_SIM_PYTHON" -m pip install 'isaacsim[all,extscache]==6.0.1.0' \
-  --extra-index-url https://pypi.nvidia.com
-```
-
-Install the direct RoboICL dependencies next:
-
-```bash
-"$ROBOICL_POLICY_PYTHON" -m pip install -r setup/requirements-policy.txt
-"$ROBOICL_SIM_PYTHON" -m pip install \
-  -r setup/requirements-sim.txt \
-  -c setup/constraints-sim.txt
-```
-
-Install the bundled simulator libraries from the repository root:
-
-```bash
-"$ROBOICL_SIM_PYTHON" -m pip install -e third_party/IsaacLab/source/isaaclab \
-  -e third_party/IsaacLab/source/isaaclab_physx \
-  -e third_party/IsaacLab/source/isaaclab_assets \
-  -e third_party/IsaacLab/source/isaaclab_tasks
-```
-
-If the simulator environment provides a newer `libstdc++` than the host:
-
-```bash
-SIM_PREFIX="$(dirname -- "$(dirname -- "$ROBOICL_SIM_PYTHON")")"
-export ROBOICL_SIM_LD_PRELOAD="$SIM_PREFIX/lib/libstdc++.so.6"
-```
+For custom environment locations or data directories, set the corresponding
+`ROBOICL_*` variables before sourcing the script; existing overrides are preserved.
 
 ## Data preparation
 
@@ -129,6 +140,10 @@ export ROBOICL_SIM_LD_PRELOAD="$SIM_PREFIX/lib/libstdc++.so.6"
 Fetch the complete frozen RoboDojo asset tree into an external Git/LFS cache.
 The script checks out the revision in `configs/data.lock.json`, verifies the
 download, and links `data/Assets` to the cache.
+
+`data/Assets` is a symlink, so `data` and `data-cache` do not hold two copies.
+The asset files live in the chosen cache directory; keep it while using the
+link. `data` also holds installation records and generated reference data.
 
 ```bash
 "$ROBOICL_POLICY_PYTHON" setup/fetch_assets.py \
@@ -219,6 +234,12 @@ without starting the simulator or calling the model API.
 
 `--capture-only` launches the scene and verifies the three RGB streams without
 making a model request or executing an action.
+
+A successful run reports `capture_complete_no_api` and writes
+`capture/capture_probe.json` plus sample PNGs in the printed run directory.
+The adapter enables the Kit visualizer in headless mode so Isaac Lab 3 continues
+to update camera render products. On failure, inspect that run's `client.log`
+for the simulator traceback; this check does not require an API key.
 
 ### 3. Run a scored zero-shot rollout
 

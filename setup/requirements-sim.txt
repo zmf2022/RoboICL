@@ -7,6 +7,7 @@ scipy==1.17.0
 opencv-python-headless==4.13.0.90
 transforms3d==0.4.2
 omegaconf==2.3.0
+hydra-core==1.3.2
 msgpack==1.1.1
 msgpack-numpy==0.4.8
 pydantic==2.11.7
@@ -18,4 +19,12 @@ wheel==0.45.1
 virtualenv==20.30.0
 
 # RoboDojo uses the newer cuRobo API; v0.7.8 is incompatible.
-nvidia-curobo @ git+https://github.com/NVlabs/curobo.git@895c6517243f8cb091c73c018c8167192d39599a
+nvidia-curobo[cu12-torch] @ git+https://github.com/NVlabs/curobo.git@895c6517243f8cb091c73c018c8167192d39599a
+
+# Run from the repository root. Bind Isaac Lab to this checkout only.
+isaacsim[all,extscache]==6.0.1.0
+-e third_party/IsaacLab/source/isaaclab
+-e third_party/IsaacLab/source/isaaclab_physx
+-e third_party/IsaacLab/source/isaaclab_assets
+-e third_party/IsaacLab/source/isaaclab_tasks
+-e third_party/IsaacLab/source/isaaclab_visualizers[kit]

@@ -47,7 +47,7 @@ INSTALL_REQUIRES = [
     "pytest",
     "pytest-mock",
     "junitparser",
-    "coverage==7.6.1",
+    "coverage==7.4.4",  # match Isaac Sim 6.0.1 kernel
     "debugpy>=1.8.20",
     "flatdict>=4.1.0",
     "flaky",

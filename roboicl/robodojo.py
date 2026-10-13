@@ -78,7 +78,14 @@ def main() -> int:
     global_configs.ROBOTS_PATH = str(assets / "Robots")
 
     args.kit_args = " ".join(filter(None, (args.kit_args, deprecated_extension_args())))
-    app_launcher = AppLauncher(args)
+    # Isaac Lab 3's legacy CLI --headless disables all visualizers, including
+    # the Kit app updates that deliver camera frames. Keep headless as an app
+    # option and explicitly request the Kit visualizer for camera rendering.
+    app_options = vars(args).copy()
+    app_options.pop("headless_explicit", None)
+    if args.enable_cameras:
+        app_options["visualizer"] = "kit"
+    app_launcher = AppLauncher(app_options)
     simulation_app = app_launcher.app
     # Isaac Sim 6 dropped re-exports that only matter once its extensions are
     # loaded; restore them before any RoboDojo runtime module imports them.

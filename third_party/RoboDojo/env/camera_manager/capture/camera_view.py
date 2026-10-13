@@ -308,6 +308,13 @@ class CameraView(XFormPrim):
         else:
             tiled_data: wp.array = data
             info = {}
+        # Annotators return an empty CPU array before the first delivered frame,
+        # even when CUDA was requested. Never launch an image kernel against it.
+        if tiled_data.size == 0:
+            raise RuntimeError(
+                f"Camera annotator {spec['name']} has no delivered frame for {self._render_product_path}; "
+                "ensure the Kit visualizer is enabled and render before reading cameras."
+            )
         # tiled image
         if tiled:
             shape = (*self.tiled_resolution, spec["channels"])
