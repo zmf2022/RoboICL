@@ -1,0 +1,26 @@
+{
+  "id": "roboicl-codex-sol-1shot-v1",
+  "model": "gpt-6.1-sol",
+  "api_mode": "codex_cli",
+  "endpoint": "codex://exec",
+  "shot_count": 1,
+  "train_chunk_count": 12,
+  "reference_setting": "configs/references/one_shot_j12_b12.json",
+  "harness_overrides": {
+    "reasoning_effort": "medium",
+    "max_output_tokens": null,
+    "train_result_observations": true,
+    "demo_message_format": "tool_calls",
+    "live_anchor_count": 12,
+    "live_retain_latest": true,
+    "max_context_images": 50,
+    "ik_continuity_guard": true,
+    "max_action_corrections": 2,
+    "max_transport_attempts": 1,
+    "request_timeout_s": 600,
+    "cache_mode": "omit",
+    "preserve_reasoning": false,
+    "reasoning_summary": "omit",
+    "rolling_history_cache": false
+  }
+}

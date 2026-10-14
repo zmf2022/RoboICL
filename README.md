@@ -394,6 +394,50 @@ export ASTRA_API_KEY=local-vllm
 ```
 
 
+### Use Codex CLI with GPT-6.1 Sol
+
+The `codex_cli` backend invokes the installed Codex CLI using its existing login.
+It does not use the local vLLM server or require `ASTRA_API_KEY`. Install Codex
+and run `codex login` first; `--dry-run` checks the executable and login status.
+This integration was verified with `codex-cli 0.162.1`. Set
+`ROBOICL_CODEX_CLI=/absolute/path/to/codex` if it is not on PATH.
+
+Run one-shot ICL with the same task demonstration and execution guards:
+
+```bash
+"$ROBOICL_POLICY_PYTHON" -m roboicl.run deposit_coin \
+  --shots 1 --seed 0 --layout 0 --gpu 0 \
+  --profile configs/protocols/codex_sol_one_shot.json --model gpt-6.1-sol --gui
+```
+
+For zero-shot, use `--shots 0` with
+`--profile configs/protocols/codex_sol_zero_shot.json`. Add `--dry-run` to either
+command to validate before starting the simulator. Use `--model` to select
+another model available through your Codex login, or `--reasoning-effort` to
+change the default `medium` effort.
+
+Each decision starts an ephemeral, isolated, read-only `codex exec` invocation.
+The retained TRAIN/LIVE transcript, observations, action calls, and execution
+receipts are serialized into the prompt; image bytes are attached without
+resizing. The CLI returns the next action arguments via `--output-schema`, which
+the adapter normalizes into the existing `act` protocol. Model actions still
+pass the original tensor bounds, IK continuity, and tracking checks. Tool use,
+invalid output, missing usage, CLI failure, and timeout stop the decision.
+Stopping the policy server also terminates its active CLI process groups before
+waiting for model worker threads, including on SIGINT and SIGTERM.
+
+Requests are recorded under `astra/<episode>/codex/request_<number>/`, including
+`prompt.txt`, attached JPEGs, `schema.json`, `command.json`, `events.jsonl`,
+`stderr.log`, and `response.json`. `codex_transport.jsonl` records transport
+status, and the shared budget log uses CLI-reported token usage. CLI failures
+are not automatically retried. This backend does not enforce an API output-token
+limit: omit `--max-output-tokens`; `output_token_reservation` remains a budget
+estimate. The CLI uses its own system prompt and transcript serialization, so
+comparisons against an HTTP provider are not identical-harness model A/B tests.
+
+See the [official Codex non-interactive documentation](https://learn.chatgpt.com/docs/non-interactive-mode)
+for CLI authentication, JSON event output, and structured output options.
+
 ### 下载全部任务示范与更换任务
 
 当前代码配置了 **42 个任务**。官方固定版本的数据集发布了其中 **34 个任务**的原始示范；8 个 Open 类任务采用零样本设置，没有发布对应示范。论文协议锁定了 22 个任务的 one-shot reference。

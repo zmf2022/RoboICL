@@ -106,11 +106,11 @@ class Model:
         self.endpoint = validate_endpoint(
             self.api_mode,
             os.environ.get("ASTRA_ENDPOINT") or model_cfg.get("endpoint")
-            or "https://api.openai.com/v1/responses",
+            or ("codex://exec" if self.api_mode == 'codex_cli' else "https://api.openai.com/v1/responses"),
         )
         self.model_name = model_cfg.get("model", "gpt-6-astra")
         self.api_key = os.environ.get("ASTRA_API_KEY")
-        if not self.api_key:
+        if not self.api_key and self.api_mode != 'codex_cli':
             raise RuntimeError("ASTRA_API_KEY is required (use the private credential launcher)")
         self.effort = os.environ.get("ASTRA_REASONING_EFFORT", model_cfg.get("reasoning_effort", "xhigh"))
         self.max_chunk = int(model_cfg.get("max_chunk", 32))

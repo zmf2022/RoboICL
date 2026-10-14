@@ -412,8 +412,8 @@ class Model(LegacyModel):
         api_mode = getattr(self, 'api_mode', RESPONSES)
         if os.environ.get('ASTRA_STREAM', '0') == '1':
             payload['stream'] = True
-        if api_mode == 'chat_completions' and payload.get('stream'):
-            raise ValueError('Chat Completions currently requires ASTRA_STREAM=0')
+        if api_mode in ('chat_completions', 'codex_cli') and payload.get('stream'):
+            raise ValueError('Chat Completions and Codex CLI require ASTRA_STREAM=0')
         metrics = self.payload_metrics(payload)
         reserve = metrics['reserved_tokens']
         if (self.budget_poisoned or (self.max_requests is not None and self.request_count >= self.max_requests) or
@@ -425,6 +425,8 @@ class Model(LegacyModel):
         self.pending_reserved_tokens += reserve
         self._log('budget.jsonl', {'event': 'reserved', 'request': self.request_count, **metrics,
                                   'cumulative_reserved_tokens': self.reserved_tokens})
+        if api_mode == 'codex_cli':
+            return self._request_codex(payload, reserve)
         mode = os.environ.get('ASTRA_NETWORK_MODE', 'system')
         if mode not in ('system', 'direct'):
             self.budget_poisoned = True
@@ -554,6 +556,34 @@ class Model(LegacyModel):
                 retryable=retryable, error_code=code, recovery=recovery,
                 max_attempts=max_attempts,
             ) from None
+        return self._settle_response(response, reserve)
+
+    def _request_codex(self, payload, reserve):
+        from .codex_cli import request, CodexCLIError
+        remaining = self.request_timeout_s
+        if self.max_seconds is not None:
+            run_remaining = self.max_seconds - (time.monotonic() - self.started)
+            remaining = run_remaining if remaining is None else min(remaining, run_remaining)
+        remaining = max(1, remaining) if remaining is not None else None
+        directory = self.episode_dir / 'codex' / f'request_{self.request_count:04d}'
+        started = time.monotonic()
+        diagnostic = {'request': self.request_count, 'api_mode': 'codex_cli',
+                      'started_at': datetime.now(timezone.utc).isoformat(),
+                      'timeout_s': remaining, 'directory': str(directory)}
+        self._log('requests.jsonl', {**diagnostic, 'payload': payload})
+        try:
+            response = _validate_json_response(request(payload, directory, remaining))
+        except (CodexCLIError, OSError, ValueError, TypeError) as error:
+            self.budget_poisoned = True
+            self._log('codex_transport.jsonl', {**diagnostic, 'event': 'failed',
+                      'elapsed_s': time.monotonic()-started, 'error': str(error), 'retryable': False})
+            raise RequestTransportError('Codex CLI failed; see codex_transport.jsonl',
+                                        retryable=False, error_code='codex_cli_failed') from error
+        self._log('codex_transport.jsonl', {**diagnostic, 'event': 'completed',
+                  'elapsed_s': time.monotonic()-started, 'response_id': response.get('id')})
+        return self._settle_response(response, reserve)
+
+    def _settle_response(self, response, reserve):
         try:
             usage = response.get('usage') or {}
             values = [usage.get('input_tokens'), usage.get('output_tokens')]

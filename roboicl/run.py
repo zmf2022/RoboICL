@@ -460,6 +460,12 @@ def main():
         config["max_output_tokens"] = args.max_output_tokens
     if args.omit_max_output_tokens:
         config.pop("max_output_tokens", None)
+    codex_report = None
+    if api_mode == "codex_cli" and not args.capture_only:
+        if config.get("max_output_tokens") is not None:
+            raise ValueError("Codex CLI cannot enforce max_output_tokens; omit that option")
+        from roboicl.policy.codex_cli import preflight as codex_preflight
+        codex_report = codex_preflight()
     effort = config.get("reasoning_effort", "xhigh")
     horizon_tag = f"pred{config['predict_horizon']}_exec{config['execute_horizon']}"
     live_anchor_tag = f"livek{config.get('live_anchor_count', 0)}"
@@ -581,7 +587,8 @@ def main():
         "provider_api_mode": api_mode,
         "provider_endpoint": env.get("ASTRA_ENDPOINT"),
         "provider_stream": env["ASTRA_STREAM"] == "1",
-        "provider_http_backend": "python-urllib",
+        "provider_http_backend": None if api_mode == "codex_cli" else "python-urllib",
+        "codex_cli": codex_report,
         "source_manifest_sha256": sha(CODE / "RELEASE_MANIFEST.json") if (CODE / "RELEASE_MANIFEST.json").is_file() else None,
         "reference_preflight": preflight_report,
         "asset_preflight": asset_report,
@@ -598,7 +605,7 @@ def main():
             ASTRA_CAMERA_PREFLIGHT=str(out / "capture"),
         )
 
-    if not args.capture_only:
+    if not args.capture_only and api_mode != "codex_cli":
         for k in ["ASTRA_API_KEY", "ASTRA_ENDPOINT"]:
             if not env.get(k):
                 raise ValueError(f"Supply {k} externally")

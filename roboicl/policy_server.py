@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import signal
 
 from roboicl.paths import configure_imports
 
@@ -39,10 +40,30 @@ def main() -> int:
         ws_ping_interval_s=30,
         ws_ping_timeout_s=600,
     ))
+    async def serve():
+        try:
+            await server.serve_forever()
+        finally:
+            # Cancel CLI inference before asyncio joins model worker threads.
+            # The CLI owns a separate process group and does not receive the
+            # launcher's SIGINT/SIGTERM sent to this server's group.
+            if model.api_mode == 'codex_cli':
+                from roboicl.policy.codex_cli import stop_active_requests
+                stop_active_requests()
+
+    def terminate(*_):
+        raise KeyboardInterrupt
+
+    previous_sigterm = signal.getsignal(signal.SIGTERM)
+    if model.api_mode == 'codex_cli':
+        signal.signal(signal.SIGTERM, terminate)
     try:
-        asyncio.run(server.serve_forever())
+        asyncio.run(serve())
     except KeyboardInterrupt:
         pass
+    finally:
+        if model.api_mode == 'codex_cli':
+            signal.signal(signal.SIGTERM, previous_sigterm)
     return 0
 
 

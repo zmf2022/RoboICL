@@ -8,16 +8,21 @@ from urllib.parse import urlparse
 
 RESPONSES = "responses"
 CHAT_COMPLETIONS = "chat_completions"
+CODEX_CLI = "codex_cli"
 
 
 def validate_api_mode(value: object) -> str:
-    if value not in (RESPONSES, CHAT_COMPLETIONS):
-        raise ValueError("api_mode must be responses or chat_completions")
+    if value not in (RESPONSES, CHAT_COMPLETIONS, CODEX_CLI):
+        raise ValueError("api_mode must be responses, chat_completions or codex_cli")
     return value
 
 
 def validate_endpoint(api_mode: str, endpoint: object) -> str:
     validate_api_mode(api_mode)
+    if api_mode == CODEX_CLI:
+        if endpoint != 'codex://exec':
+            raise ValueError('Codex CLI endpoint must be codex://exec')
+        return endpoint
     if not isinstance(endpoint, str) or not endpoint.strip():
         raise ValueError("ASTRA_ENDPOINT must be a non-empty API URL")
     parsed = urlparse(endpoint)
@@ -31,7 +36,7 @@ def validate_endpoint(api_mode: str, endpoint: object) -> str:
 
 def to_wire_payload(payload: dict, api_mode: str) -> dict:
     validate_api_mode(api_mode)
-    if api_mode == RESPONSES:
+    if api_mode in (RESPONSES, CODEX_CLI):
         return deepcopy(payload)
     if payload.get("stream"):
         raise ValueError("Chat Completions currently requires stream=false")
@@ -100,7 +105,7 @@ def from_wire_response(response: dict, api_mode: str) -> dict:
     validate_api_mode(api_mode)
     if not isinstance(response, dict):
         raise ValueError("Provider returned a non-object payload")
-    if api_mode == RESPONSES:
+    if api_mode in (RESPONSES, CODEX_CLI):
         return response
     choices = response.get("choices")
     if not isinstance(choices, list) or len(choices) != 1:
