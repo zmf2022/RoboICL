@@ -15,6 +15,7 @@ from env.global_configs import ENV_REGEX_NAMESPACE
 from env.planner_manager.curobo_planner import CuroboPlanner
 from env.robot_manager.control_manager import ControlManager, MetaControl
 from utils.ensure_usd_path import ensure_usd_path
+from utils.isaaclab_pose import wxyz_to_xyzw, xyzw_to_wxyz
 
 
 class RobotManager:
@@ -154,16 +155,17 @@ class RobotManager:
         for env_idx in range(self.num_envs):
             if env_idx in env_idx_list:
                 pose = deepcopy(link_pose[env_idx][link_idx])
-                if not is_relative:
-                    results[env_idx] = np.array(pose.cpu())
-                else:
+                if is_relative:
                     origin_pos = env_origin_pos[env_idx]
-                    # pose: [x, y, z, qw, qx, qy, qz] in world frame
+                    # Native Isaac Lab pose: [x, y, z, qx, qy, qz, qw].
                     # origin_pos: [x, y, z] of env origin in world frame
                     # relative position = world_pos - origin_pos (origin has translation only)
-                    rel_pose = pose.clone()
-                    rel_pose[:3] = rel_pose[:3] - origin_pos
-                    results[env_idx] = np.array(rel_pose.cpu())
+                    pose[:3] = pose[:3] - origin_pos
+                # Isaac Lab 3 buffers use XYZW; every RoboDojo consumer,
+                # including the IK planner and policy observation, uses WXYZ.
+                result = np.array(pose.cpu())
+                result[3:7] = xyzw_to_wxyz(result[3:7])
+                results[env_idx] = result
 
             else:
                 results[env_idx] = None
@@ -640,7 +642,7 @@ class RobotManager:
             prim_path=f"{ENV_REGEX_NAMESPACE}/robot{idx}",
             init_state=ArticulationCfg.InitialStateCfg(
                 pos=base_pose[:3],
-                rot=base_pose[-4:],
+                rot=wxyz_to_xyzw(base_pose[-4:]),
                 joint_pos=scene_cfg.init_state.joint_pos,
             ),
         )

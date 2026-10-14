@@ -12,6 +12,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 
 
 CODE = Path(__file__).resolve().parents[1]
@@ -40,32 +41,27 @@ def materialize_robot_configs(data_root: Path) -> list[str]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path, default=CODE / "data")
-    parser.add_argument(
-        "--cache",
-        type=Path,
-        required=True,
-        help="External Git/LFS cache; data-root/Assets becomes a symlink to cache/Assets",
-    )
     args = parser.parse_args()
     data_root = args.data_root.expanduser().resolve()
-    cache = args.cache.expanduser().resolve()
     lock = json.loads((CODE / "configs/data.lock.json").read_text(encoding="utf-8"))["assets"]
     target = data_root / "Assets"
     data_root.mkdir(parents=True, exist_ok=True)
 
     if target.exists() or target.is_symlink():
-        if not target.is_symlink() or target.resolve() != (cache / "Assets").resolve():
-            raise RuntimeError(f"Existing Assets target preserved; use a clean data root or inspect it first: {target}")
+        raise RuntimeError(f"Existing Assets target preserved; use a clean data root or inspect it first: {target}")
 
+    # Git/LFS staging is temporary; the installed Assets directory contains real files.
+    with tempfile.TemporaryDirectory(prefix=".assets-download-", dir=data_root) as staging:
+        install_assets(data_root, Path(staging), lock)
+
+
+def install_assets(data_root: Path, cache: Path, lock: dict) -> None:
+    target = data_root / "Assets"
     env = dict(os.environ, GIT_LFS_SKIP_SMUDGE="1")
-    if not cache.exists():
-        cache.mkdir(parents=True)
-        command(cache, env, "init")
-        endpoint = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")
-        url = os.environ.get("ROBODOJO_ASSET_REPO_URL", f"{endpoint}/datasets/{lock['repo_id']}")
-        command(cache, env, "remote", "add", "origin", url)
-    elif not (cache / ".git").is_dir():
-        raise RuntimeError(f"Existing non-Git cache preserved: {cache}")
+    command(cache, env, "init")
+    endpoint = os.environ.get("HF_ENDPOINT", "https://huggingface.co").rstrip("/")
+    url = os.environ.get("ROBODOJO_ASSET_REPO_URL", f"{endpoint}/datasets/{lock['repo_id']}")
+    command(cache, env, "remote", "add", "origin", url)
 
     command(cache, env, "fetch", "--depth=1", "origin", lock["revision"])
     command(cache, env, "sparse-checkout", "init", "--cone")
@@ -89,10 +85,9 @@ def main() -> None:
     for name in ("Robots", "Object", "Room", "Material", "Sensor", "Eval_Layout"):
         if not (cache / "Assets" / name).is_dir():
             raise RuntimeError(f"Frozen asset tree is incomplete: Assets/{name}")
-    if not target.exists():
-        target.symlink_to(cache / "Assets", target_is_directory=True)
-    generated = materialize_robot_configs(data_root)
     tree = command(cache, env, "ls-tree", "-r", "HEAD", "Assets")
+    (cache / "Assets").rename(target)
+    generated = materialize_robot_configs(data_root)
     manifest = {
         "schema": "roboicl.assets.install.v1",
         "repo_id": lock["repo_id"],
@@ -101,7 +96,6 @@ def main() -> None:
         "include": lock["include"],
         "assets_tree_sha256": hashlib.sha256(tree.encode("utf-8")).hexdigest(),
         "assets": str(target),
-        "cache": str(cache),
         "generated": generated,
     }
     (data_root / ".roboicl-assets.json").write_text(json.dumps(manifest, indent=2) + "\n")

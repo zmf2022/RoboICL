@@ -412,6 +412,8 @@ def main():
     output_group.add_argument("--max-output-tokens", type=int, default=None)
     output_group.add_argument("--omit-max-output-tokens", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--gui", action="store_true",
+                    help="Show the Isaac Sim window during the rollout or camera probe")
     ap.add_argument(
         "--capture-only",
         action="store_true",
@@ -496,7 +498,7 @@ def main():
         ASTRA_TRACKING_GUARD="1",
         ASTRA_VALIDATE_RGB="1",
         ASTRA_NETWORK_MODE="direct",
-        ASTRA_STREAM="1",
+        ASTRA_STREAM="1" if api_mode == "responses" else "0",
         ASTRA_RETRIEVABLE_HISTORY="0",
         PYTHONPATH=os.pathsep.join(python_paths("policy")),
         PYTHONNOUSERSITE="1",
@@ -545,10 +547,11 @@ def main():
         "--host",
         "127.0.0.1",
         "--enable_cameras",
-        "--headless",
         "--kit_args",
         "--enable isaacsim.replicator.behavior --enable isaacsim.sensors.camera",
     ]
+    if not args.gui:
+        client.append("--headless")
     if args.capture_only:
         client.append("--capture-only")
         server = []

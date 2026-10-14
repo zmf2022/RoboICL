@@ -2,7 +2,7 @@
 
 RoboDojo targets Isaac Lab 2.3 on Isaac Sim 5.1 (Python 3.11). The simulator
 environment runs Isaac Lab 3.0 on Isaac Sim 6.x (Python 3.12), which changes
-several import-time contracts:
+several integration contracts:
 
 - ``isaaclab.sim.SimulationCfg.physx`` moved behind ``SimulationCfg.physics``
   and ``PhysxCfg`` moved into the separate ``isaaclab_physx`` package.
@@ -18,6 +18,11 @@ several import-time contracts:
   RoboDojo's ``--enable`` flags fail before the app starts.
 - ``omni.physx`` stopped re-exporting ``acquire_physx_interface`` after its
   extension loads; RoboDojo still calls it through the package.
+- Asset configuration and pose buffers changed from WXYZ to XYZW. RoboDojo
+  converts these explicitly at its robot manager boundary; prim/camera APIs
+  retain their own WXYZ contract and are not patched globally.
+- Deprecated Warp prim utilities apply a forward parent transform in
+  ``get_local_from_world``. Restore the inverse before prims rewrite poses.
 
 This module restores those contracts within the shared bundled sources.
 Only the entry points RoboDojo actually touches are restored; no other Isaac
@@ -276,6 +281,52 @@ def _restore_physx_manager_backend_utils() -> bool:
     return True
 
 
+def _restore_warp_world_to_local() -> bool:
+    """Correct the deprecated Warp prim utility at its shared call boundary.
+
+    Isaac Sim 6.0.1's get_local_from_world calls its local-to-world kernel.
+    XFormPrim uses this to preserve world poses while rewriting xform ops,
+    so the forward transform corrupts mounted camera positions and rotations.
+    USD matrices use row vectors: local = world * inverse(parent).
+    Retain the prim API's WXYZ convention and Warp array/device contract.
+    """
+    import numpy as np
+    import warp as wp
+    from pxr import Gf
+    import isaacsim.core.utils.warp as backend
+    import isaacsim.core.utils.warp.transformations as transformations
+
+    if getattr(transformations.get_local_from_world, "_roboicl_inverse_parent", False):
+        return False
+
+    def get_local_from_world(parent_transforms, positions, orientations, device):
+        parents = parent_transforms.numpy()
+        world_positions = positions.numpy()
+        world_orientations = orientations.numpy()
+        translations = np.empty((len(world_positions), 3), dtype=np.float32)
+        rotations = np.empty((len(world_positions), 4), dtype=np.float32)
+        for i, (parent, position, quaternion) in enumerate(
+            zip(parents, world_positions, world_orientations)
+        ):
+            world = Gf.Matrix4d(1)
+            world.SetRotate(Gf.Quatd(float(quaternion[0]), Gf.Vec3d(*map(float, quaternion[1:]))))
+            world.SetTranslateOnly(Gf.Vec3d(*map(float, position)))
+            local = Gf.Transform(world * Gf.Matrix4d(parent.tolist()).GetInverse())
+            rotation = local.GetRotation().GetQuat()
+            translations[i] = local.GetTranslation()
+            rotations[i] = (rotation.GetReal(), *rotation.GetImaginary())
+        return (
+            wp.from_numpy(translations, device=device),
+            wp.from_numpy(rotations, device=device),
+        )
+
+    get_local_from_world._roboicl_inverse_parent = True
+    # XFormPrim imports the package export; direct callers use the submodule.
+    transformations.get_local_from_world = get_local_from_world
+    backend.get_local_from_world = get_local_from_world
+    return True
+
+
 def _restore_physics_sim_interface() -> bool:
     """Restore ``SimulationManager._physics_sim_interface`` on PhysxManager.
 
@@ -385,6 +436,7 @@ def install_post_launch() -> dict:
     report["physics_context_restored"] = _restore_physics_context_accessor()
     report["backend_aligned_with_warp_view"] = _align_backend_with_warp_view()
     report["physx_manager_backend_utils_restored"] = _restore_physx_manager_backend_utils()
+    report["warp_world_to_local_corrected"] = _restore_warp_world_to_local()
     report["physx_manager_sim_interface_restored"] = _restore_physics_sim_interface()
     report["prim_deletion_payload_adapted"] = _adapt_deprecated_prim_deletion_callback()
     report["gui_render_predicates"] = _restore_gui_render_predicates()

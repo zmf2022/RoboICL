@@ -7,4 +7,3 @@ eval_result/
 *.log
 .env
 .env.*
-data-cache/

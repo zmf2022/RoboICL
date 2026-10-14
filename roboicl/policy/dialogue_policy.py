@@ -64,6 +64,7 @@ class DialogueConfig:
     # Budget accounting only; this value is never sent as an API output limit.
     output_token_reservation: int = 16384
     reasoning_effort: str = "xhigh"
+    chat_template_kwargs: dict | None = None
     max_total_tokens: int | None = None
     max_seconds: int | None = None
     max_context_text_bytes: int | None = None
@@ -101,6 +102,8 @@ class DialogueConfig:
     live_retain_latest: bool = False  # Reserve the final key slot for the latest complete chunk.
 
     def __post_init__(self):
+        if self.chat_template_kwargs is not None and not isinstance(self.chat_template_kwargs, dict):
+            raise ValueError('chat_template_kwargs must be an object or null')
         for field, low, high in (
             ('predict_horizon', 1, 64), ('execute_horizon', 1, 64),
             ('feedback_frames', 1, 8), ('max_turns', 1, 80),
@@ -708,6 +711,8 @@ class Model(BoundedModel):
                    'tools': deepcopy(self.frozen_tools), 'input': self._request_inputs(),
                    'tool_choice': {'type': 'function', 'name': 'act'}, 'parallel_tool_calls': False,
                    'store': False, 'reasoning': {'effort': self.effort}}
+        if self.api_mode == 'chat_completions' and self.dialogue_config.chat_template_kwargs is not None:
+            payload['chat_template_kwargs'] = deepcopy(self.dialogue_config.chat_template_kwargs)
         if self.dialogue_config.max_output_tokens is not None and os.environ.get('ASTRA_OMIT_MAX_OUTPUT_TOKENS') != '1':
             payload['max_output_tokens'] = self.max_output
         if self.dialogue_config.preserve_reasoning:

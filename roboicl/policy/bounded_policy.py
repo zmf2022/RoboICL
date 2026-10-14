@@ -412,6 +412,8 @@ class Model(LegacyModel):
         api_mode = getattr(self, 'api_mode', RESPONSES)
         if os.environ.get('ASTRA_STREAM', '0') == '1':
             payload['stream'] = True
+        if api_mode == 'chat_completions' and payload.get('stream'):
+            raise ValueError('Chat Completions currently requires ASTRA_STREAM=0')
         metrics = self.payload_metrics(payload)
         reserve = metrics['reserved_tokens']
         if (self.budget_poisoned or (self.max_requests is not None and self.request_count >= self.max_requests) or

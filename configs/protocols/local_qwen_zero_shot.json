@@ -1,0 +1,27 @@
+{
+  "id": "roboicl-local-qwen-0shot-v1",
+  "model": "Qwen3.8-27B",
+  "api_mode": "chat_completions",
+  "endpoint": "http://127.0.0.1:8000/v1/chat/completions",
+  "shot_count": 0,
+  "train_chunk_count": 0,
+  "zero_shot_only": true,
+  "harness_overrides": {
+    "max_output_tokens": 16384,
+    "chat_template_kwargs": {"enable_thinking": true},
+    "image_detail": "high",
+    "cache_mode": "omit",
+    "preserve_reasoning": false,
+    "reasoning_summary": "omit",
+    "rolling_history_cache": false,
+    "train_result_observations": false,
+    "demo_message_format": "tool_calls",
+    "live_anchor_count": 25,
+    "live_retain_latest": true,
+    "max_context_images": 50,
+    "ik_continuity_guard": true,
+    "max_action_corrections": 2,
+    "max_transport_attempts": 3,
+    "request_timeout_s": 600
+  }
+}
