@@ -339,6 +339,11 @@ blocks, their observations and results, plus 12 retained LIVE memory blocks.
 The model weights are unchanged. The zero-shot profile requires `--shots 0`
 and cannot be used with `--shots 1`.
 
+The one-shot profile retains the verified TRAIN bundle's `original` image detail
+contract. The Chat Completions adapter maps it to `high` only in the outgoing
+request, preserving the image bytes and bundle hashes. Do not override the
+one-shot harness image detail to `high`; `--dry-run` rejects that mismatch.
+
 Prepare the official, content-verified `deposit_coin` demonstration once:
 
 ```bash

@@ -35,6 +35,7 @@ from roboicl.policy.image_budget import (
     anchored_image_budget, reference_image_count,
 )
 from roboicl.policy.provider_compat import validate_api_mode, validate_endpoint
+from roboicl.policy.observation_images import validate_train_image_encoding
 from roboicl.paths import data_root as get_data_root, results_root as get_results_root, python_paths
 from roboicl.reference_setting import load_reference_setting, reference_record
 from roboicl.upstream import verify_sources, verify_simulator, verify_curobo
@@ -158,6 +159,9 @@ def reference_preflight(task, shots, config, ref, profile, data_root):
             raise ValueError(f"TRAIN bundle content hash mismatch: {ref}")
         if bundle.get("task") != task:
             raise ValueError(f"TRAIN task {bundle.get('task')!r} does not match {task!r}")
+        validate_train_image_encoding(bundle.get("prompt_image_encoding"),
+                                      config["image_profile"], config["image_detail"],
+                                      config["image_layout"], bundle=True)
         episodes = bundle.get("episodes", [])
         if len(episodes) != shots:
             raise ValueError(f"Requested {shots}-shot but TRAIN bundle contains {len(episodes)} episodes: {ref}")

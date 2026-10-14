@@ -66,6 +66,16 @@ class ChatCompletionsTest(unittest.TestCase):
         self.assertEqual(response["usage"]["total_tokens"], 168)
         self.assertEqual(provider_cache_usage(response["usage"])["cached_tokens"], 20)
 
+    def test_original_image_detail_is_adapted_only_on_chat_wire(self):
+        payload = self.payload()
+        image = payload['input'][0]['content'][1]
+        image['detail'] = 'original'
+        wire = to_wire_payload(payload, 'chat_completions')
+        self.assertEqual(wire['messages'][1]['content'][1]['image_url']['detail'], 'high')
+        self.assertEqual(wire['messages'][1]['content'][1]['image_url']['url'], image['image_url'])
+        self.assertEqual(image['detail'], 'original')
+        self.assertEqual(to_wire_payload(payload, 'responses'), payload)
+
     def test_vllm_stop_with_tool_call_is_supported(self):
         result = from_wire_response(self.response("stop"), "chat_completions")
         self.assertEqual(result["status"], "completed")

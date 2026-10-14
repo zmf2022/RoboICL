@@ -20,7 +20,7 @@ from .anchored_cache import annotate_anchored_breakpoints, observation_end
 from .train_tool_reference import tool_reference_messages
 from .trajectory_memory import LiveTrajectoryMemory, omitted_interval
 from .image_budget import assert_image_budget, reference_image_count
-from .observation_images import camera_input_parts, image_encoding, image_layout_content, prompt_image, validate_prompt_image
+from .observation_images import camera_input_parts, image_encoding, image_layout_content, prompt_image, validate_prompt_image, validate_train_image_encoding
 
 
 ARM_WORKSPACE_GUIDANCE = (
@@ -415,12 +415,8 @@ class Model(BoundedModel):
             # Bundles store the individual native source JPEGs; the triptych is
             # composed only for presentation. Reuse those verified source bytes
             # for separate views without rewriting the immutable TRAIN bundle.
-            separate_bundle_views = (bundle and c.image_profile == 'native_jpeg'
-                and c.image_layout == 'separate'
-                and archive_encoding == image_encoding('native_jpeg', c.image_detail, 'triptych'))
-            if (archive_encoding != image_encoding(c.image_profile, c.image_detail, c.image_layout)
-                    and not separate_bundle_views):
-                raise ValueError('TRAIN source images must match the requested encoding contract')
+            validate_train_image_encoding(archive_encoding, c.image_profile, c.image_detail,
+                                          c.image_layout, bundle=bundle)
             observations = [example for demo in demos for example in
                             demo['examples'] + ([demo['terminal_observation']] if demo.get('terminal_observation') else [])]
             for example in observations:

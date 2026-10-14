@@ -21,7 +21,6 @@
     "chat_template_kwargs": {
       "enable_thinking": true
     },
-    "image_detail": "high",
     "cache_mode": "omit",
     "preserve_reasoning": false,
     "reasoning_summary": "omit",

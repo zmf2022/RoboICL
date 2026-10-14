@@ -66,7 +66,9 @@ def to_wire_payload(payload: dict, api_mode: str) -> dict:
                     elif part["type"] == "input_image":
                         image = {"url": part["image_url"]}
                         if "detail" in part:
-                            image["detail"] = part["detail"]
+                            # Preserve canonical TRAIN encoding; Chat Completions
+                            # uses high for native-resolution image presentation.
+                            image["detail"] = "high" if part["detail"] == "original" else part["detail"]
                         converted.append({"type": "image_url", "image_url": image})
                     else:
                         raise ValueError(f"Unsupported chat content: {part['type']}")

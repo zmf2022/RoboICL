@@ -73,6 +73,15 @@ def image_encoding(profile='thumbnail_jpeg', detail='low', image_layout='separat
     return contract
 
 
+def validate_train_image_encoding(archive_encoding, profile, detail, image_layout, *, bundle=False):
+    """Keep immutable TRAIN bytes and the canonical presentation contract aligned."""
+    separate_bundle_views = (bundle and profile == 'native_jpeg'
+        and image_layout == 'separate'
+        and archive_encoding == image_encoding('native_jpeg', detail, 'triptych'))
+    if archive_encoding != image_encoding(profile, detail, image_layout) and not separate_bundle_views:
+        raise ValueError('TRAIN source images must match the requested encoding contract')
+
+
 def _validate_image(url, contract):
     if not isinstance(url, str) or not url.startswith(contract['url_prefix']):
         raise ValueError('Camera input requires a JPEG base64 data URL')
